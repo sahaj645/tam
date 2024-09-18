@@ -1,70 +1,89 @@
 const SurvivalModel = require('../models/survialuser');
-const test =(req,res)=>{
-    res.json('test is working')
-}
 
+// Function to test server
+const test = (req, res) => {
+    res.json('test is working');
+};
+
+// Function to handle team creation
 const survival = async (req, res) => {
     try {
-      const { ParticipantName, RegNo, VITEmail, TeamName, TeamMembers } = req.body;
-  
-      // Check if ParticipantName was entered
-      if (!ParticipantName) {
-        return res.status(400).json({ error: "Name is required" });
-      }
-  
-      // Check if RegNo has exactly 8 characters
-      if (RegNo.length !== 8) {
-        return res.status(400).json({ error: "Registration number must be exactly 8 characters long" });
-      }
-  
-      // Check if VITEmail is already registered
-      const emailExists = await SurvivalModel.findOne({ VITEmail });
-      if (emailExists) {
-        return res.status(400).json({ error: "Email is already registered" });
-      }
-  
-      // Check if TeamName is already taken
-      const teamNameExists = await SurvivalModel.findOne({ TeamName });
-      if (teamNameExists) {
-        return res.status(400).json({ error: "Team name is already taken" });
-      }
-  
-      // Check if TeamMembers is between 2 and 4 (inclusive)
-      if (TeamMembers < 2 || TeamMembers > 4) {
-        return res.status(400).json({ error: "Team members must be between 2 and 4 (inclusive)" });
-      }
-  
-      // Create a new participant using the validated data
-      const newParticipant = new SurvivalModel({
-        ParticipantName,
-        RegNo,
-        VITEmail,
-        TeamName,
-        TeamMembers
-      });
-  
-      // Save the participant to the database
-      const savedParticipant = await newParticipant.save();
-  
-      // Send a response with the saved participant data
-      res.status(201).json({
-        success: true,
-        message: 'Participant registered successfully',
-        data: savedParticipant
-      });
-  
-    } catch (error) {
-      // Handle any errors that occur during the process
-      console.error(error);
-      res.status(500).json({
-        success: false,
-        message: 'An error occurred while registering the participant',
-        error: error.message
-      });
-    }
-  };
-  
+        const { ParticipantName, RegNo, VITEmail, TeamName } = req.body;
 
-module.exports={
-    test,survival
-}
+        // Validate input
+        if (!ParticipantName || !RegNo || !VITEmail || !TeamName) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
+
+        if (RegNo.length !== 9) {
+            return res.status(400).json({ error: "Registration number must be exactly 9 characters long" });
+        }
+
+        // Check if TeamName is already taken (case-insensitive)
+        const teamNameExists = await SurvivalModel.findOne({ TeamName: { $regex: new RegExp(`^${TeamName}$`, 'i') } }).exec();
+        if (teamNameExists) {
+            return res.status(400).json({ error: "Team name is already taken" });
+        }
+
+        // Generate a unique team ID
+        const generatedTeamId = await generateUniqueTeamId();
+
+        // Create new team entry
+        const newTeam = new SurvivalModel({
+            teamId: generatedTeamId,
+            TeamName,
+            TeamMembers: [{
+                ParticipantName,
+                RegNo,
+                VITEmail
+            }]
+        });
+
+        // Save the new team to the database
+        const savedTeam = await newTeam.save();
+
+        // Send success response
+        return res.status(201).json({
+            success: true,
+            message: 'Team created successfully',
+            data: savedTeam,
+            teamId: generatedTeamId
+        });
+
+    } catch (error) {
+        console.error('Error in survival function:', error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors: error.errors
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while processing the request',
+            error: error.message
+        });
+    }
+};
+
+// Function to generate a unique 7-digit team ID
+const generateUniqueTeamId = async () => {
+    let teamId;
+    let isUnique = false;
+
+    while (!isUnique) {
+        teamId = (Math.floor(1000000 + Math.random() * 9000000)).toString();
+        const existingTeam = await SurvivalModel.findOne({ teamId }).exec();
+        if (!existingTeam) {
+            isUnique = true;
+        }
+    }
+
+    return teamId;
+};
+
+module.exports = {
+    test,
+    survival
+};

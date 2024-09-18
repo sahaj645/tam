@@ -5,11 +5,13 @@ export default function Navbar() {
   return (
     <nav>
 
-      <Link to="/">Home </Link>
-      <Link to="/register">CodeCortex</Link>
-      <Link to="/SurvivalShowdown"> SurvivalShowdown</Link>
-
+      <Link to="/">Home   </Link>
+      <Link to="/">About   </Link>
+      <Link to="/"> Events   </Link>
       
+      <Link to="/Contact">Contact </Link>
+      
+      <Link to="/Navreg">Register </Link>
     </nav>
   )
 }

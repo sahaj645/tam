@@ -1,31 +1,33 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
+// Define the schema for the team and participant management
 const survivalSchema = new Schema({
-  ParticipantName: {
+  teamId: {
     type: String,
     required: true,
-  },
-  RegNo: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  VITEmail: {
-    type: String,
-    required: true,
-    unique: true,
+    unique: true, // Ensure that the team ID is unique
   },
   TeamName: {
     type: String,
     required: true,
   },
   TeamMembers: {
-    type: Number,
-    required: true,
-  
-  },
+    type: [{ 
+      ParticipantName: { type: String, required: true },
+      RegNo: { type: String, required: true },
+      VITEmail: { type: String, required: true }
+    }],
+    validate: [teamMembersLimit, 'Team cannot have more than 4 members.'], // Custom validator for max team members
+  }
 });
 
-const SurvivalModel = mongoose.model('survival', survivalSchema);
+// Custom validator to ensure team members do not exceed 4
+function teamMembersLimit(val) {
+  return val.length <= 4;
+}
+
+// Compile the schema into a model
+const SurvivalModel = mongoose.model('SurvivalShowdown', survivalSchema);
+
 module.exports = SurvivalModel;
